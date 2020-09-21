@@ -165,6 +165,7 @@ if !("`x'"=="") {
 ******************************
 * put never treated units at the end of the list of groups (after always)
 ******************************
+  loc anynever=0
   count if `never'==1
   if r(N)>0 {  
    qui replace `g'=`ntimegps'+1 if `never'==1
@@ -924,16 +925,17 @@ program define baconddtiming, eclass sortpreserve
   * Save data
   if "`stub'" != "" {
     * "dd_est,weight,weight_rescale,time_lower,time_upper,dd_type" columns
-    foreach v in dd_est,weight,weight_rescale,time_lower,time_upper,dd_type {
+    foreach v in dd_est weight weight_rescale time_lower time_upper dd_type{
      g `stub'`v'=.
      }
     forvalues k = 1/`= rowsof(`dd_est')' {
      replace `stub'dd_est = (`dd_est'[`k',8]) in `k'
      replace `stub'weight = (`dd_wt'[`k',3]) in `k' 
-     replace `stub'weight_rescale = (`dd_wt'[`k',5]) 
-     replace `stub'time_lower = (`dd_est'[`k',5]) 
-     replace `stub'time_upper =  (`dd_est'[`k',6]) 
-     replace `stub'dd_type =  (`dd_est'[`k',7]) 
+     replace `stub'weight_rescale = (`dd_wt'[`k',5]) in `k'
+     replace `stub'time_lower = (`dd_est'[`k',5]) in `k'
+     replace `stub'time_upper =  (`dd_est'[`k',6]) in `k'
+     replace `stub'dd_type =  (`dd_est'[`k',7]) in `k'
+	 
      }
     label var `stub'dd_est "2x2 DD estimate"
     label var `stub'weight "2x2 DD weight"
