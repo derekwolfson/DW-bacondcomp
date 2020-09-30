@@ -635,7 +635,6 @@ program define baconddtiming, eclass sortpreserve
   else {
     mata : st_matrix("`sigma'", colsum(st_matrix("`sigma_term2'")))
   }
-  
   noisily di as txt "Calculating weights..."
   
   * Weights where comparison group is untreated (never treated)
@@ -664,7 +663,7 @@ program define baconddtiming, eclass sortpreserve
   forvalues k = 1/`= rowsof(`tr_grps')' {
     local l = `k' + 1
     while `l' <= `= rowsof(`tr_grps')' {
-      mat `tmp_s' = (`tr_samp_share'[`k',1] * `tr_samp_share'[`l',1] * (`tr_share'[`k',1] - `tr_share'[`l',1]) * (1 - (`tr_share'[`k',1] - `tr_share'[`l',1]))) / `sigma'[1,1]
+      mat `tmp_s' = ( `tr_samp_share'[`k',1] * `tr_samp_share'[`l',1] * (`tr_share'[`k',1] - `tr_share'[`l',1]) * (1 - (`tr_share'[`k',1] - `tr_share'[`l',1]))) / `sigma'[1,1]
       mat `tmp_mu' = (1 - `tr_share'[`k',1]) / (1 - (`tr_share'[`k',1] - `tr_share'[`l',1]))
       
       mat `tmp_s_mu' = `k',`l',(`tmp_s' * `tmp_mu'),1
@@ -686,7 +685,6 @@ program define baconddtiming, eclass sortpreserve
   mata : st_matrix("`wt_tr_l_tot'", colsum(st_matrix("`wt_tr_l'")[1...,3]))
   mata : st_matrix("`tmp'", st_matrix("`wt_tr_l'")[1...,3] / st_matrix("`wt_tr_l_tot'"))
   mat `wt_tr_l' = `wt_tr_l',`tmp'
-  
   * ESTIMATE 2x2 DIFF-IN-DIFF REGRESSIONS
   
   noisily di as text "Estimating 2x2 diff-in-diff regressions..."
@@ -742,10 +740,13 @@ program define baconddtiming, eclass sortpreserve
   local earlylate "e l"
   foreach x of local earlylate {
     forvalues k = 1/`= rowsof(`dd_`x'')' {
+	
       areg `y' `tr' i.`i' if ///
         (`tr_time' == `dd_`x''[`k',3] | `tr_time' == `dd_`x''[`k',4]) & ///
         `t' >= `dd_`x''[`k',5] & `t' <= `dd_`x''[`k',6] & `touse', a(`t')
       mat `dd_`x'_tr_est' = nullmat(`dd_`x'_tr_est')\_b[`tr']
+	  pause off
+	  pause
     }
     mat `dd_`x'_tr_est' = `dd_`x'',`dd_`x'_tr_est'
     mata : st_matrix("`dd_`x'_tr_est'", sort(st_matrix("`dd_`x'_tr_est'"), (1,2)))
@@ -925,17 +926,18 @@ program define baconddtiming, eclass sortpreserve
   * Save data
   if "`stub'" != "" {
     * "dd_est,weight,weight_rescale,time_lower,time_upper,dd_type" columns
-    foreach v in dd_est weight weight_rescale time_lower time_upper dd_type{
-     g `stub'`v'=.
+    foreach v in dd_est weight weight_rescale time_lower time_upper dd_type treatmentGroup controlGroup{
+     qui g `stub'`v'=.
      }
     forvalues k = 1/`= rowsof(`dd_est')' {
-     replace `stub'dd_est = (`dd_est'[`k',8]) in `k'
-     replace `stub'weight = (`dd_wt'[`k',3]) in `k' 
-     replace `stub'weight_rescale = (`dd_wt'[`k',5]) in `k'
-     replace `stub'time_lower = (`dd_est'[`k',5]) in `k'
-     replace `stub'time_upper =  (`dd_est'[`k',6]) in `k'
-     replace `stub'dd_type =  (`dd_est'[`k',7]) in `k'
-	 
+     qui replace `stub'dd_est = (`dd_est'[`k',8]) in `k'
+     qui replace `stub'weight = (`dd_wt'[`k',3]) in `k' 
+     qui replace `stub'weight_rescale = (`dd_wt'[`k',5]) in `k'
+     qui replace `stub'time_lower = (`dd_est'[`k',5]) in `k'
+     qui replace `stub'time_upper =  (`dd_est'[`k',6]) in `k'
+     qui replace `stub'dd_type =  (`dd_est'[`k',7]) in `k'
+	 qui replace `stub'treatmentGroup = (`dd_est'[`k',1]) in `k'
+	 qui replace `stub'controlGroup = (`dd_est'[`k',2]) in `k'
      }
     label var `stub'dd_est "2x2 DD estimate"
     label var `stub'weight "2x2 DD weight"
@@ -945,6 +947,8 @@ program define baconddtiming, eclass sortpreserve
     label var `stub'dd_type "2x2 DD type"
     label define `stub'dd_type 1 "Earlier T vs. Later C" 2 "Later T vs. Earlier C" 3 "T vs. Never T" 4 "T vs. Already T"
     label values `stub'dd_type `stub'dd_type
+	la var `stub'treatmentGroup "Treatment Group"
+	la var `stub'controlGroup "Control Group"
     }
   
   * Save data
